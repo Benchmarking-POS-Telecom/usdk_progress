@@ -61,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
 
             UPrinter devicePrinter = DeviceHelper.me().getPrinter();
             devicePrinter.addText(0, "Teste");
+            devicePrinter.feedLine(5);
             devicePrinter.startPrint(new OnPrintListener.Stub() {
                 @Override
                 public void onFinish() throws RemoteException {
