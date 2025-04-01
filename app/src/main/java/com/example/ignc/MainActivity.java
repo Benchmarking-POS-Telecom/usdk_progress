@@ -2,6 +2,9 @@ package com.example.ignc;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.os.IBinder;
+import android.os.RemoteException;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -12,8 +15,11 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.usdk.apiservice.aidl.UDeviceService;
+import com.usdk.apiservice.aidl.beeper.UBeeper;
 import com.usdk.apiservice.aidl.device.DeviceInfo;
 import com.usdk.apiservice.aidl.device.UDeviceManager;
+import com.usdk.apiservice.aidl.printer.UPrinter;
+import com.usdk.apiservice.aidl.printer.OnPrintListener;
 
 public class MainActivity extends AppCompatActivity {
     private UDeviceService deviceService;
@@ -50,9 +56,28 @@ public class MainActivity extends AppCompatActivity {
             UDeviceManager deviceManager = DeviceHelper.me().getDeviceManager();
             DeviceInfo deviceInfo = deviceManager.getDeviceInfo();
 
+            UBeeper deviceBeeper = DeviceHelper.me().getBeeper();
+            deviceBeeper.startBeep(500);
+
+            UPrinter devicePrinter = DeviceHelper.me().getPrinter();
+            devicePrinter.addText(0, "Teste");
+            devicePrinter.startPrint(new OnPrintListener.Stub() {
+                @Override
+                public void onFinish() throws RemoteException {
+                    Log.d("=> IMPRESSÃO", "=> Impressão concluída com sucesso!");
+                }
+
+                @Override
+                public void onError(int error) throws RemoteException {
+                    Log.e("=> IMPRESSÃO","Erro" + error);
+                }
+            });
+
+
+
             String dadosFormatados = "Modelo: " + deviceInfo.getModel() + "\n" +
                     "Fabricante: " + deviceInfo.getManufacture() + "\n" +
-                    "Número de Série: " + deviceInfo.getSerialNo();
+                    "Número de Série: " + deviceInfo.getSerialNo() + "\n";
 
             runOnUiThread(() -> textoResultado.setText(dadosFormatados));
 

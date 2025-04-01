@@ -16,7 +16,9 @@ import com.usdk.apiservice.aidl.DeviceServiceData;
 import com.usdk.apiservice.aidl.UDeviceService;
 import com.usdk.apiservice.aidl.beeper.UBeeper;
 import com.usdk.apiservice.aidl.device.UDeviceManager;
+import com.usdk.apiservice.aidl.printer.OnPrintListener;
 import com.usdk.apiservice.limited.DeviceServiceLimited;
+import com.usdk.apiservice.aidl.printer.UPrinter;
 
 public final class DeviceHelper implements ServiceConnection {
     private static final String TAG = "DeviceHelper";
@@ -121,6 +123,16 @@ public final class DeviceHelper implements ServiceConnection {
             }
         }.start();
         return UDeviceManager.Stub.asInterface(iBinder);
+    }
+
+    public UPrinter getPrinter() throws  IllegalStateException {
+        IBinder iBinder = new IBinderCreator(){
+            @Override
+            IBinder create() throws RemoteException {
+                return deviceService.getPrinter();
+            }
+        }.start();
+        return UPrinter.Stub.asInterface(iBinder);
     }
 
     abstract class IBinderCreator {
