@@ -16,9 +16,13 @@ import com.usdk.apiservice.aidl.DeviceServiceData;
 import com.usdk.apiservice.aidl.UDeviceService;
 import com.usdk.apiservice.aidl.beeper.UBeeper;
 import com.usdk.apiservice.aidl.device.UDeviceManager;
-import com.usdk.apiservice.aidl.printer.OnPrintListener;
+import com.usdk.apiservice.aidl.system.USystem;
 import com.usdk.apiservice.limited.DeviceServiceLimited;
 import com.usdk.apiservice.aidl.printer.UPrinter;
+import com.usdk.apiservice.aidl.system.location.ULocation;
+import com.usdk.apiservice.aidl.device.DeviceInfo;
+
+
 
 public final class DeviceHelper implements ServiceConnection {
     private static final String TAG = "DeviceHelper";
@@ -26,9 +30,11 @@ public final class DeviceHelper implements ServiceConnection {
     private volatile boolean isBinded = false;
     private UDeviceService deviceService;
     private Context context;
+
     public void init(Context context) {
         this.context = context;
     }
+
     private int retry = 0;
 
     public static DeviceHelper me() {
@@ -85,6 +91,7 @@ public final class DeviceHelper implements ServiceConnection {
         DeviceServiceLimited.unbind(context);
         bindService();
     }
+
     public void register(boolean useEpayModule) throws IllegalStateException {
         try {
             Bundle param = new Bundle();
@@ -106,7 +113,7 @@ public final class DeviceHelper implements ServiceConnection {
     }
 
     public UBeeper getBeeper() throws IllegalStateException {
-        IBinder iBinder = new IBinderCreator(){
+        IBinder iBinder = new IBinderCreator() {
             @Override
             IBinder create() throws RemoteException {
                 return deviceService.getBeeper();
@@ -115,8 +122,28 @@ public final class DeviceHelper implements ServiceConnection {
         return UBeeper.Stub.asInterface(iBinder);
     }
 
+    public USystem getSystem() throws IllegalStateException {
+        IBinder iBinder = new IBinderCreator() {
+            @Override
+            IBinder create() throws RemoteException {
+                return deviceService.getSystem();
+            }
+        }.start();
+        return USystem.Stub.asInterface(iBinder);
+    }
+
+    public ULocation getLocation() throws IllegalStateException {
+        IBinder iBinder = new IBinderCreator() {
+            @Override
+            IBinder create() throws RemoteException {
+                return getSystem().getLocation();
+            }
+        }.start();
+        return ULocation.Stub.asInterface(iBinder);
+    }
+
     public UDeviceManager getDeviceManager() throws IllegalStateException {
-        IBinder iBinder = new IBinderCreator(){
+        IBinder iBinder = new IBinderCreator() {
             @Override
             IBinder create() throws RemoteException {
                 return deviceService.getDeviceManager();
@@ -125,8 +152,11 @@ public final class DeviceHelper implements ServiceConnection {
         return UDeviceManager.Stub.asInterface(iBinder);
     }
 
-    public UPrinter getPrinter() throws  IllegalStateException {
-        IBinder iBinder = new IBinderCreator(){
+
+
+
+    public UPrinter getPrinter() throws IllegalStateException {
+        IBinder iBinder = new IBinderCreator() {
             @Override
             IBinder create() throws RemoteException {
                 return deviceService.getPrinter();
@@ -134,6 +164,7 @@ public final class DeviceHelper implements ServiceConnection {
         }.start();
         return UPrinter.Stub.asInterface(iBinder);
     }
+
 
     abstract class IBinderCreator {
         IBinder start() throws IllegalStateException {
