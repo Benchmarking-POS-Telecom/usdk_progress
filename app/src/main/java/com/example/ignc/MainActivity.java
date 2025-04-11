@@ -1,38 +1,42 @@
 package com.example.ignc;
 
-import android.content.Context;
-import android.location.Location;
-import android.net.wifi.WifiManager;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
-import android.os.RemoteException;
+import android.os.SystemClock;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.usdk.apiservice.aidl.UDeviceService;
+import com.example.ignc.helpers.AndroidHelper;
+import com.example.ignc.helpers.BatteryReceiver;
 import com.usdk.apiservice.aidl.beeper.UBeeper;
 import com.usdk.apiservice.aidl.device.DeviceInfo;
 import com.usdk.apiservice.aidl.device.UDeviceManager;
-import com.usdk.apiservice.aidl.printer.UPrinter;
-import com.usdk.apiservice.aidl.printer.OnPrintListener;
 import com.usdk.apiservice.aidl.system.USystem;
 import com.usdk.apiservice.aidl.system.location.LocationInfo;
 import com.usdk.apiservice.aidl.system.location.ULocation;
 
 import java.lang.reflect.Field;
 
-
 public class MainActivity extends AppCompatActivity {
-    private com.example.ignc.DeviceHelper DeviceHelper;
+    private com.example.ignc.helpers.DeviceHelper DeviceHelper;
+    private AndroidHelper androidHelper;
     private TextView textoResultado;
     private Button botao;
+    private BatteryReceiver batteryReceiver;
+    private float batteryLevel = -1;
+    private int brightnessLevel = -1;
+    private float previousBattery = -1;
+    private long timeStart = -1;
+    private boolean firstDropIgnored = false;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,14 +49,65 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
+
+        //PEGANDO A O CUSTO DE BATERIA DO BRILHO DA TELA ( VALOR RELATIVO )
+        batteryReceiver = new BatteryReceiver(percentage -> {
+            if (batteryLevel != percentage) {
+                if (timeStart == -1) {
+                    timeStart = System.currentTimeMillis();
+                    previousBattery = percentage;
+                } else if (!firstDropIgnored) {
+                    firstDropIgnored = true;
+                    previousBattery = percentage;
+                    timeStart = System.currentTimeMillis();
+                    Log.d("BAT_MONITOR", "Ignorando primeira queda.");
+                } else if (percentage < previousBattery) {
+                    long timeNow = System.currentTimeMillis();
+                    long duration = timeNow - timeStart;
+                    Log.d("BAT_MONITOR", "Brilho: " + brightnessLevel +
+                            " | Queda de " + previousBattery + "% → " + percentage + "%" +
+                            " | Tempo: " + (duration / 1000) + " segundos");
+
+                    previousBattery = percentage;
+                    timeStart = timeNow;
+                }
+            }
+            batteryLevel = percentage;
+            updateTextView();
+        });
+
+
+        IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        registerReceiver(batteryReceiver, filter);
+
         textoResultado = findViewById(R.id.textoResultado);
         botao = findViewById(R.id.botao);
+
         DeviceHelper.me().init(this);
         DeviceHelper.me().bindService();
+        androidHelper = new AndroidHelper(this);
 
         botao.setOnClickListener(v -> obterDadosDispositivo());
+
+
+        androidHelper.startMonitoringBrightness(new AndroidHelper.OnBrightnessChangeListener() {
+            @Override
+            public void onBrightnessChanged(int brightness) {
+                brightnessLevel = brightness;
+                updateTextView();
+            }
+        });
+
     }
 
+
+    private void updateTextView() {
+        runOnUiThread(() -> {
+            String batteryText = batteryLevel >= 0 ? "Bateria: " + batteryLevel + "%" : "Bateria: N/A";
+            String brightnessText = brightnessLevel >= 0 ? "Brilho: " + brightnessLevel : "Brilho: N/A";
+            textoResultado.setText(batteryText + "\n" + brightnessText);
+        });
+    }
     private void obterDadosDispositivo() {
         try {
             UDeviceManager deviceManager = DeviceHelper.me().getDeviceManager();
@@ -110,7 +165,10 @@ public class MainActivity extends AppCompatActivity {
 
             String dadosFormatados = "Modelo: " + deviceInfo.getModel() + "\n\n" +
                     "Location: " + "\n"  + inf + "\n\n" +
+//                    "Bateria " + "\n" + batteryLevel + "%" +  "\n\n" +
                     deviceInfoDetails.toString();
+
+            Log.d("DEVICE_INFO", dadosFormatados);
 
             runOnUiThread(() -> textoResultado.setText(dadosFormatados));
 
@@ -118,5 +176,13 @@ public class MainActivity extends AppCompatActivity {
             runOnUiThread(() -> textoResultado.setText("Erro: " + e.getMessage()));
             e.printStackTrace();
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        DeviceHelper.me().unregister();
+        unregisterReceiver(batteryReceiver);
+        androidHelper.stopMonitoringBrightness();
     }
 }

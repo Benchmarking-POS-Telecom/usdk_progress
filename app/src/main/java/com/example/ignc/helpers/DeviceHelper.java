@@ -1,4 +1,4 @@
-package com.example.ignc;
+package com.example.ignc.helpers;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -20,9 +20,6 @@ import com.usdk.apiservice.aidl.system.USystem;
 import com.usdk.apiservice.limited.DeviceServiceLimited;
 import com.usdk.apiservice.aidl.printer.UPrinter;
 import com.usdk.apiservice.aidl.system.location.ULocation;
-import com.usdk.apiservice.aidl.device.DeviceInfo;
-
-
 
 public final class DeviceHelper implements ServiceConnection {
     private static final String TAG = "DeviceHelper";
@@ -57,6 +54,7 @@ public final class DeviceHelper implements ServiceConnection {
         retry = 0;
         isBinded = true;
         deviceService = UDeviceService.Stub.asInterface(service);
+
 
         try {
             register(true);
@@ -151,9 +149,6 @@ public final class DeviceHelper implements ServiceConnection {
         }.start();
         return UDeviceManager.Stub.asInterface(iBinder);
     }
-
-
-
 
     public UPrinter getPrinter() throws IllegalStateException {
         IBinder iBinder = new IBinderCreator() {
